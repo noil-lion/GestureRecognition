@@ -4,11 +4,11 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 def draw_acc(listX, listY, listZ, time_step):
-    ln1, = plt.plot(time_step, listX,color='red',linewidth=2.0,linestyle='-')
-    ln2, = plt.plot(time_step, listY,color='blue',linewidth=2.0,linestyle='-')
-    ln3, = plt.plot(time_step, listZ,color='yellow',linewidth=2.0,linestyle='-')
+    ln1, = plt.plot(time_step, listX, color='red', linewidth=2.0, linestyle='-')
+    ln2, = plt.plot(time_step, listY, color='blue', linewidth=2.0, linestyle='-')
+    ln3, = plt.plot(time_step, listZ, color='yellow', linewidth=2.0, linestyle='-')
     plt.title("sensor data change")  # 设置标题及字体
-    plt.legend(handles=[ln1,ln2,ln3],labels=['acc_X','acc_Y', 'acc_Z'])
+    plt.legend(handles=[ln1, ln2, ln3], labels=['acc_X', 'acc_Y', 'acc_Z'])
     ax = plt.gca()
     ax.spines['right'].set_color('none')  # right边框属性设置为none 不显示
     ax.spines['top'].set_color('none')    # top边框属性设置为none 不显示

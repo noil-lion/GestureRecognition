@@ -1,6 +1,3 @@
-import numpy as np
-
-
 class loadData(object):
     def __init__(self, path):
         self.path = path

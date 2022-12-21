@@ -8,7 +8,7 @@ from torch.autograd import Variable
 import sys
 sys.path.append('../../../code/')
 from utils.CustomDataset import CustomDataset  # 导入自定义数据集
-from CNN_LSTM_CBAM import CNN_LSTM_CBAM  # 导入CNN_LSTM
+from CNN_LSTM_CBAM import CNNLSTMCBAM  # 导入CNN_LSTM
 
 
 # 定义常量
@@ -16,31 +16,42 @@ dir_train = 'D:/ResearchSpace/task/gestureRecognition/data/train/'
 dir_test = 'D:/ResearchSpace/task/gestureRecognition/data/test/'
 sample_dir = 'samples.csv'
 label_dir = 'labels.csv'
-PATH = '../../weight/CNN_LSTM_CBAM_raw.pth'
+PATH = '../../weight/CNNLSTMCBAM_raw.pth'
+# params
 num_classes = 5
 batch_size = 32
 lr = 0.001
 momentum = 0.9
-epoch = 200
+epoch = 256
+in_channels = 6
+out_channels = 12
+seq_length = 400
+hidden_size = 49
+num_layers = 2
+# 无GPU跑cpu
+device = torch.device("cuda:0")
 
 # 无GPU跑cpu
 # device = torch.device("cuda:0" if torch.cuda.is_available() else 'CPU')
 
 # 加载自定义训练数据集
-CD = CustomDataset(dir_train+label_dir, dir_train+sample_dir, 2400, (400, 6))
+CD = CustomDataset(dir_train+label_dir, dir_train+sample_dir, 2400, (400, 6), 'train')
 Train_Dataloader = DataLoader(dataset=CD, batch_size=batch_size, shuffle=False)
 
 
 # 加载自定义测试数据集
-CD = CustomDataset(dir_test+label_dir, dir_test+sample_dir, 2400, (400, 6))
+CD = CustomDataset(dir_test+label_dir, dir_test+sample_dir, 2400, (400, 6), 'test')
 Test_Dataloader = DataLoader(dataset=CD, batch_size=batch_size, shuffle=False)
 
 # 实例化网络
-net = CNN_LSTM_CBAM(num_classes)
+net = CNNLSTMCBAM(in_channels, out_channels, hidden_size, num_layers, num_classes, batch_size, seq_length)
 print(net)
+if torch.cuda.is_available():
+    net = net.cuda()
 # 定义损失函数核优化器
-criterion = nn.L1Loss()  # criterion:标准，准则，原则, CrossEntropyLossL:交叉熵损失
-optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9)
+criterion = nn.CrossEntropyLoss()  # criterion:标准，准则，原则, CrossEntropyLossL:交叉熵损失
+criterion = criterion.cuda()
+optimizer = optim.Adam(net.parameters(), lr=lr)
 
 
 # 定义训练函数
@@ -50,17 +61,13 @@ def train_loop(dataloader, model, loss_fn, optimizer, which_model, epoch):
         inputs, labels = data
         # 将这些数据转换成Variable类型
         inputs, labels = Variable(inputs), Variable(labels)
-        if which_model == 1:
-            inputs = inputs.squeeze(1)
-        elif which_model == 2:
-            inputs = inputs.unsqueeze(1)   # sequeeze 用于对输入数据进行压缩或者unsqueeze解压，也就是增加维度或者减小维度
-            inputs = inputs.unsqueeze(1)
-        else:
-            pass
+        labels = labels.float()
+        inputs = inputs.cuda()
+        labels = labels.cuda()
         # Compute prediction and loss
         output = model(inputs)
 
-        loss = loss_fn(output, labels)
+        loss = loss_fn(output, labels.long())
         if batch % 100 == 0:
             print('Epoch :{}	 Loss:{:.6f}	 '.format(epoch, loss.data.item()))
         # Backpropagation
@@ -70,6 +77,7 @@ def train_loop(dataloader, model, loss_fn, optimizer, which_model, epoch):
 
 
 ''''''
+
 # pdb.set_trace()
 # 开始训练
 for epoch in range(epoch):
@@ -103,15 +111,12 @@ def test(net, dataloader, PATH, which_model):
             inputs, labels = data
             # 将这些数据转换成Variable类型
             inputs, labels = Variable(inputs), Variable(labels)
-            if which_model == 1:
-                inputs = inputs.squeeze(1)
-            elif which_model == 2:
-                inputs = inputs.unsqueeze(1)   # sequeeze 用于对输入数据进行压缩或者unsqueeze解压，也就是增加维度或者减小维度
-                inputs = inputs.unsqueeze(1)
-            else:
-                pass
+            labels = labels.float()
+            inputs = inputs.cuda()
+            labels = labels.cuda()
             # Compute prediction and loss
             pred = net(inputs)
+
             # _, predicted = torch.max(pred.data, 1)
             # 实验结果
             # 记录混淆矩阵参数
@@ -139,5 +144,12 @@ def test(net, dataloader, PATH, which_model):
     print("每种识别准确率为：{0}".format([rate*100 for rate in corrects/per_kinds]))
 
 
+# 加载自定义训练数据集
+CD = CustomDataset(dir_train+label_dir, dir_train+sample_dir, 2400, (400, 6), 'test')
+Train_Dataloader = DataLoader(dataset=CD, batch_size=batch_size, shuffle=False)
+
+# 加载自定义测试数据集
+CD = CustomDataset(dir_test+label_dir, dir_test+sample_dir, 2400, (400, 6), 'test')
+Test_Dataloader = DataLoader(dataset=CD, batch_size=batch_size, shuffle=False)
 test(net, Train_Dataloader, PATH, 2)
 test(net, Test_Dataloader, PATH, 2)
